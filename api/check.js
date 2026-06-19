@@ -35,6 +35,16 @@ export default async function handler(req, res) {
 
   const { action, code } = req.query;
 
+  if (action === 'debug') {
+    return res.status(200).json({
+      botTokenSet: !!process.env.BOT_TOKEN,
+      botTokenPrefix: process.env.BOT_TOKEN ? process.env.BOT_TOKEN.substring(0, 8) : null,
+      channelUsername: process.env.CHANNEL_USERNAME,
+      redisUrlSet: !!process.env.REDIS_URL,
+      redisUrlPrefix: process.env.REDIS_URL ? process.env.REDIS_URL.substring(0, 15) : null
+    });
+  }
+
   if (action === 'check' && code) {
     try {
       const dataStr = await redis.get(code);
