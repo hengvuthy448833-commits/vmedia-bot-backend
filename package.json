@@ -6,7 +6,7 @@
     "start": "node api/webhook.js"
   },
   "dependencies": {
-    "@vercel/kv": "^1.0.1",
+    "ioredis": "^5.3.2",
     "axios": "^1.6.2"
   }
 }

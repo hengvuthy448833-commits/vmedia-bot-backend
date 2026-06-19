@@ -1,6 +1,7 @@
-import { kv } from '@vercel/kv';
+import Redis from 'ioredis';
 import axios from 'axios';
 
+const redis = new Redis(process.env.REDIS_URL);
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_USERNAME = process.env.CHANNEL_USERNAME;
 
@@ -31,12 +32,13 @@ export default async function handler(req, res) {
       // Check channel membership
       const isMember = await checkChannelMembership(userId);
       if (isMember) {
-        // Save verification state in KV (lasts for 10 minutes)
-        await kv.set(sessionCode, 'verified', { ex: 600 });
-        await sendMessage(chatId, "🎉 <b>ជោគជ័យ!</b> ប្អូនបានចូលរួមក្នុង Channel រួចរាល់ហើយ។\n\n👉 សូមត្រឡប់ទៅកាន់កម្មវិធីទូរស័ព្ទវិញ វានឹងបើកដំណើរការដោយស្វ័យប្រវត្តិ។");
+        // Save verification state in KV as object
+        await redis.set(sessionCode, JSON.stringify({ status: 'verified', userId: userId }), 'EX', 600);
+        await sendMessage(chatId, "🎉 <b>ជោគជ័យ!</b> ប្អូនបានចូលរួមក្នុង Channel រួចរាល់ហើយ。\n\n👉 សូមត្រឡប់ទៅកាន់កម្មវិធីទូរស័ព្ទវិញ រួចចុចប៊ូតុង Check Status ដើម្បីបន្ត។");
       } else {
-        await kv.set(sessionCode, 'pending', { ex: 600 });
-        await sendMessage(chatId, "⚠️ <b>ផ្ទៀងផ្ទាត់បរាជ័យ!</b> ប្អូនមិនទាន់បានចូលរួមក្នុង Channel របស់យើងនៅឡើយទេ។\n\nសូមចុចចូលរួមតាម Link ខាងក្រោម រួចត្រឡប់មកទីនេះចុច /start ម្តងទៀត៖\n👉 <a href=\"https://t.me/vmediabythy\">Join VMedia Channel</a>");
+        // Save verification state in KV as pending with userId
+        await redis.set(sessionCode, JSON.stringify({ status: 'pending', userId: userId }), 'EX', 600);
+        await sendMessage(chatId, "👋 <b>សូមស្វាគមន៍!</b> ដើម្បីប្រើប្រាស់កម្មវិធី Douyin Saver សូមចុចចូលរួមក្នុង Channel របស់យើងខ្ញុំជាមុនសិន៖\n\n👉 <a href=\"https://t.me/vmediabythy\">Join VMedia Channel</a>\n\nបន្ទាប់ពីចូលរួមរួច សូមត្រឡប់ទៅកាន់កម្មវិធីទូរស័ព្ទវិញ ហើយចុចប៊ូតុង <b>Check Verification Status</b> ដើម្បីផ្ទៀងផ្ទាត់ និងប្រើប្រាស់កម្មវិធី។");
       }
     }
   } catch (error) {

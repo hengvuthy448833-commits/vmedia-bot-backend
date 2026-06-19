@@ -1,6 +1,7 @@
-import { kv } from '@vercel/kv';
+import Redis from 'ioredis';
 import axios from 'axios';
 
+const redis = new Redis(process.env.REDIS_URL);
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_USERNAME = process.env.CHANNEL_USERNAME;
 
@@ -32,24 +33,27 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  if (req.query.debug === 'env') {
-    const keys = Object.keys(process.env).filter(key => 
-      key.startsWith('KV') || key.startsWith('REDIS') || key.startsWith('UPSTASH')
-    );
-    return res.status(200).json({ env_keys: keys });
-  }
-
   const { action, code } = req.query;
 
   if (action === 'check' && code) {
     try {
-      const data = await kv.get(code);
+      const dataStr = await redis.get(code);
       
-      if (!data) {
+      if (!dataStr) {
         return res.status(200).json({ status: 'pending' });
       }
 
-      // Handle old legacy string status
+      let data;
+      try {
+        data = JSON.parse(dataStr);
+      } catch (e) {
+        // Handle old legacy string status
+        if (dataStr === 'verified') {
+          return res.status(200).json({ status: 'verified' });
+        }
+        return res.status(200).json({ status: 'pending' });
+      }
+
       if (typeof data === 'string') {
         if (data === 'verified') {
           return res.status(200).json({ status: 'verified' });
@@ -66,7 +70,7 @@ export default async function handler(req, res) {
         const isMember = await checkChannelMembership(data.userId);
         if (isMember) {
           // Update KV to verified
-          await kv.set(code, { status: 'verified', userId: data.userId }, { ex: 600 });
+          await redis.set(code, JSON.stringify({ status: 'verified', userId: data.userId }), 'EX', 600);
           return res.status(200).json({ status: 'verified' });
         }
       }
