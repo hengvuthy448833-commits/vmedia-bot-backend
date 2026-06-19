@@ -36,12 +36,21 @@ export default async function handler(req, res) {
   const { action, code } = req.query;
 
   if (action === 'debug') {
+    let codeValue = null;
+    if (code) {
+      try {
+        codeValue = await redis.get(code);
+      } catch (e) {
+        codeValue = 'Error: ' + e.message;
+      }
+    }
     return res.status(200).json({
       botTokenSet: !!process.env.BOT_TOKEN,
       botTokenPrefix: process.env.BOT_TOKEN ? process.env.BOT_TOKEN.substring(0, 8) : null,
       channelUsername: process.env.CHANNEL_USERNAME,
       redisUrlSet: !!process.env.REDIS_URL,
-      redisUrlPrefix: process.env.REDIS_URL ? process.env.REDIS_URL.substring(0, 15) : null
+      redisUrlPrefix: process.env.REDIS_URL ? process.env.REDIS_URL.substring(0, 15) : null,
+      codeValue: codeValue
     });
   }
 
